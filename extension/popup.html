@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"><title>Open Email Harvester</title></head>
+<body>
+<header><strong>Open Email Harvester</strong><a href="options.html" target="_blank" id="opts">Settings</a></header>
+<div class="row"><button id="scan" class="primary">Scan this page</button><span id="status"></span></div>
+<div class="row">
+  <input id="q" placeholder="Search…" type="search">
+  <select id="type"><option value="">All</option><option value="email">Emails</option><option value="phone">Phones</option><option value="social">Social</option></select>
+  <label><input type="checkbox" id="group"> By domain</label>
+</div>
+<div id="list"></div>
+<footer>
+  <button id="csv">CSV</button><button id="json">JSON</button>
+  <label class="btn">Import<input type="file" id="import" accept=".json,.csv" hidden></label>
+  <button id="sync">Sync</button><button id="clear" class="danger">Clear</button>
+  <span id="count"></span>
+</footer>
+<script src="src/browser-shim.js"></script><script src="src/store.js"></script><script src="src/validate.js"></script><script src="popup.js"></script>
+</body></html>

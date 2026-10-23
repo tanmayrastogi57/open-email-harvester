@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Open Email Harvester – Settings</title>
+<style>body{font:14px system-ui,sans-serif;max-width:640px;margin:30px auto;color:#1d2330}label{display:block;margin:14px 0}input[type=text],input[type=password]{width:100%;padding:6px}small{color:#667}</style></head>
+<body>
+<h2>Open Email Harvester – Settings</h2>
+<p><small>All data stays in this browser's local storage. Nothing leaves your machine unless you enable bridge sync below (localhost only).</small></p>
+<label><input type="checkbox" id="autoScan"> Auto-scan pages as they load <small>(asks for optional "all sites" permission; off by default)</small></label>
+<label><input type="checkbox" id="syncEnabled"> Sync new contacts to local AI bridge</label>
+<label>Bridge URL (localhost only)<input type="text" id="bridgeUrl"></label>
+<label>Bridge token (optional, must match OEH_TOKEN)<input type="password" id="bridgeToken"></label>
+<button id="save">Save</button> <span id="msg"></span>
+<script src="src/browser-shim.js"></script><script src="options.js"></script>
+</body></html>

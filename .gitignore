@@ -1,0 +1,10 @@
+node_modules/
+dist/
+web-ext-artifacts/
+*.pem
+*.crx
+*.key
+.env
+.env.*
+contacts.json
+.DS_Store

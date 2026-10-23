@@ -1,0 +1,85 @@
+openapi: 3.0.3
+info:
+  title: Open Email Harvester Bridge
+  version: 1.0.0
+  description: Local-only REST bridge (binds 127.0.0.1). Optional bearer token via OEH_TOKEN env var.
+servers:
+  - url: http://127.0.0.1:8765
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  parameters:
+    query: { name: query, in: query, schema: { type: string } }
+    tag: { name: tag, in: query, schema: { type: string } }
+    type: { name: type, in: query, schema: { type: string, enum: [email, phone, social] } }
+    domain: { name: domain, in: query, schema: { type: string } }
+  schemas:
+    Contact:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [email, phone, social] }
+        email: { type: string }
+        phone: { type: string }
+        url: { type: string }
+        name: { type: string }
+        domain: { type: string }
+        company: { type: string }
+        pageTitle: { type: string }
+        validity: { type: string, enum: [ok, role, disposable, invalid] }
+        tags: { type: array, items: { type: string } }
+        notes: { type: string }
+        sources: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+security:
+  - bearer: []
+  - {}
+paths:
+  /health:
+    get: { operationId: health, summary: Health check, security: [], responses: { '200': { description: OK } } }
+  /contacts:
+    get:
+      operationId: listContacts
+      summary: List / search contacts
+      parameters: [{ $ref: '#/components/parameters/query' }, { $ref: '#/components/parameters/tag' }, { $ref: '#/components/parameters/type' }, { $ref: '#/components/parameters/domain' }]
+      responses: { '200': { description: Contacts, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Contact' } } } } } }
+    post:
+      operationId: addContacts
+      summary: Add contacts (object or array); deduplicated
+      requestBody: { required: true, content: { application/json: { schema: { oneOf: [{ $ref: '#/components/schemas/Contact' }, { type: array, items: { $ref: '#/components/schemas/Contact' } }] } } } }
+      responses: { '200': { description: Added count and total } }
+    delete:
+      operationId: clearContacts
+      summary: Delete all contacts
+      responses: { '200': { description: Cleared } }
+  /contacts/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string }, description: The email, phone or url }]
+    patch:
+      operationId: tagContact
+      summary: Add tags / set notes
+      requestBody: { content: { application/json: { schema: { type: object, properties: { tags: { type: array, items: { type: string } }, notes: { type: string } } } } } }
+      responses: { '200': { description: Updated contact }, '404': { description: Not found } }
+    delete:
+      operationId: removeContact
+      summary: Remove contact
+      responses: { '200': { description: Removed count } }
+  /domains:
+    get: { operationId: listDomains, summary: Counts per domain, responses: { '200': { description: Map of domain to count } } }
+  /export:
+    get:
+      operationId: exportContacts
+      summary: Export as CSV or JSON
+      parameters: [{ name: format, in: query, schema: { type: string, enum: [csv, json] } }, { $ref: '#/components/parameters/query' }, { $ref: '#/components/parameters/tag' }]
+      responses: { '200': { description: Export file content } }
+  /extract:
+    post:
+      operationId: extract
+      summary: Extract contacts from supplied text/HTML (optionally save)
+      requestBody: { content: { application/json: { schema: { type: object, properties: { text: { type: string }, html: { type: string }, url: { type: string }, title: { type: string }, links: { type: array, items: { type: string } }, save: { type: boolean } } } } } }
+      responses: { '200': { description: Extraction result } }
+  /validate:
+    get:
+      operationId: validateEmail
+      summary: Offline syntax/disposable/role check
+      parameters: [{ name: email, in: query, required: true, schema: { type: string } }]
+      responses: { '200': { description: Validity result } }

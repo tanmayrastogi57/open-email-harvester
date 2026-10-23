@@ -1,0 +1,35 @@
+{
+  "name": "open-email-harvester",
+  "version": "1.0.0",
+  "description": "Privacy-first, site-agnostic contact/email extractor for any browser, connectable to any AI via MCP or OpenAPI.",
+  "license": "MIT",
+  "bin": {
+    "oeh-mcp": "server/mcp.js",
+    "oeh-bridge": "server/bridge.js"
+  },
+  "scripts": {
+    "test": "node --test test/",
+    "lint": "eslint .",
+    "lint:ext": "web-ext lint --source-dir extension",
+    "mcp": "node server/mcp.js",
+    "bridge": "node server/bridge.js",
+    "package": "bash scripts/package.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "email-extractor",
+    "contact-extractor",
+    "mcp",
+    "browser-extension",
+    "privacy",
+    "openapi"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
+    "web-ext": "^10.8.0"
+  }
+}
