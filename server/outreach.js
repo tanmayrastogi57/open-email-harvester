@@ -21,6 +21,21 @@ function save(list) {
 function eventId(event) {
   return event.id || [event.type, event.messageId || '', event.at || ''].join(':');
 }
+function addressValue(value) {
+  if (Array.isArray(value)) return value.map(addressValue).filter(Boolean)[0] || '';
+  const text = String(value || '').trim();
+  const match = text.match(/<([^>]+)>/);
+  return (match ? match[1] : text).trim().toLowerCase();
+}
+function findRecord(list, incoming) {
+  const email = addressValue(incoming.email);
+  return list.find((x) => {
+    if (email && addressValue(x.email) === email) return true;
+    if (incoming.threadId && (x.threadId === incoming.threadId || (x.events || []).some((e) => e.threadId === incoming.threadId))) return true;
+    if (incoming.messageId && (x.messageId === incoming.messageId || (x.events || []).some((e) => e.messageId === incoming.messageId))) return true;
+    return false;
+  });
+}
 function cleanEvent(event) {
   const e = Object.assign({}, event);
   e.type = e.type || 'note';
@@ -44,7 +59,7 @@ function applyEvent(record, event) {
 function mergeOne(list, incoming) {
   const email = normEmail(incoming.email);
   if (!email) throw new Error('outreach record requires email');
-  let record = list.find((x) => normEmail(x.email) === email);
+  let record = findRecord(list, incoming);
   const added = !record;
   if (!record) {
     record = {
@@ -116,4 +131,48 @@ function summary() {
 }
 function exportJson(query) { return JSON.stringify(list(query), null, 2); }
 
-module.exports = { FILE, STATUSES, list, upsert, recordEvent, setFollowUp, summary, exportJson };
+function reconcileGmail(messages) {
+  const listValue = load();
+  let added = 0; let updated = 0; let sent = 0; let replies = 0; let bounces = 0; let corrected = 0;
+  for (const message of (Array.isArray(messages) ? messages : []).filter(Boolean)) {
+    const direction = message.direction || ((message.labelIds || []).includes('SENT') ? 'sent' : 'inbound');
+    const email = addressValue(message.email || message.to || message.from);
+    if (!email) continue;
+    const before = findRecord(listValue, { email, threadId: message.threadId, messageId: message.messageId });
+    const recordBefore = before ? JSON.stringify({ email: before.email, role: before.role, subject: before.subject, threadId: before.threadId, messageId: before.messageId }) : '';
+    if (direction === 'sent') {
+      const result = mergeOne(listValue, {
+        email,
+        name: message.name || undefined,
+        role: message.role || inferRole(message.subject),
+        subject: message.subject,
+        threadId: message.threadId,
+        messageId: message.messageId,
+        sentAt: message.at,
+        firstContactAt: message.at,
+        lastOutboundAt: message.at,
+        source: 'gmail',
+        event: { type: 'sent', at: message.at, messageId: message.messageId, threadId: message.threadId, subject: message.subject },
+      });
+      if (result) added++;
+      sent++;
+    } else if (direction === 'bounce') {
+      mergeOne(listValue, { email, source: 'gmail', event: { type: 'bounce', at: message.at, messageId: message.messageId, threadId: message.threadId, subject: message.subject } });
+      bounces++;
+    } else if (before) {
+      mergeOne(listValue, { email: before.email, source: 'gmail', event: { type: 'reply', at: message.at, messageId: message.messageId, threadId: message.threadId, subject: message.subject } });
+      replies++;
+    }
+    const after = findRecord(listValue, { email, threadId: message.threadId, messageId: message.messageId });
+    const recordAfter = after ? JSON.stringify({ email: after.email, role: after.role, subject: after.subject, threadId: after.threadId, messageId: after.messageId }) : '';
+    if (recordBefore && recordBefore !== recordAfter) corrected++;
+    if (!before && recordAfter && direction !== 'sent') updated++;
+  }
+  save(listValue);
+  return { added, updated, corrected, sent, replies, bounces, total: listValue.length };
+}
+function inferRole(subject) {
+  return String(subject || '').replace(/^(re:|fwd:|application:|interest in)\s*/ig, '').replace(/\s+(at|—)\s+.*$/i, '').replace(/\s+[—-]\s+[^—-]+$/i, '').trim();
+}
+
+module.exports = { FILE, STATUSES, list, upsert, recordEvent, setFollowUp, summary, exportJson, reconcileGmail, inferRole };

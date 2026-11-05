@@ -106,9 +106,35 @@ The local bridge also includes a privacy-first outreach tracker. It stores data 
 
 Start the bridge and open `http://127.0.0.1:8765/outreach/dashboard` to view sent contacts, replies, follow-up status, and job metadata. The MCP server exposes `list_outreach`, `upsert_outreach`, `record_outreach_event`, `set_outreach_followup`, `outreach_summary`, and `export_outreach`.
 
-The tracker does not send mail, scrape private addresses, or connect directly to Gmail. Gmail synchronization is AI-triggered: an AI client with its own Gmail connector searches sent mail, replies, and delivery failures, then writes metadata to this local MCP server using Gmail `messageId` and `threadId`. Sending a message manually in Gmail is reflected after the next sync; there is no background watcher by default.
+The tracker does not send mail or scrape private addresses. Gmail synchronization can be AI-triggered through an AI client's Gmail connector, or can run directly through the bridge after the user completes local Gmail OAuth. Both paths search sent mail and replies, then write metadata using Gmail `messageId` and `threadId`. Sending a message manually in Gmail is reflected after the next sync.
 
 The local tracker stores outreach metadata and event history, not Gmail credentials or full message bodies. The dashboard binds to `127.0.0.1` and is visible only on the machine running the bridge unless you deliberately deploy and secure it. Each person who installs the project must connect their own AI client and Gmail account; the repository contains no user outreach data.
+
+#### Direct Gmail connection
+
+The bridge can sync Gmail without an AI in the loop. Create a Google OAuth 2.0 client for a local/web application, enable the Gmail API, and register the exact redirect URI `http://127.0.0.1:8765/auth/gmail/callback`. See Google's [OAuth web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server) and [Gmail message-list documentation](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list). Start the bridge with:
+
+```bash
+OEH_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com \
+OEH_GOOGLE_CLIENT_SECRET=your-client-secret \
+node server/bridge.js
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:OEH_GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com'
+$env:OEH_GOOGLE_CLIENT_SECRET = 'your-client-secret'
+node server/bridge.js
+```
+
+Then click **Connect Gmail** in the dashboard or extension settings. The bridge requests read-only Gmail access, reads message metadata with `format=metadata`, stores the refresh token in `~/.open-email-harvester/gmail-tokens.json`, and syncs periodically. Set `OEH_GMAIL_SYNC_INTERVAL_MS=0` to disable background sync. The token file is local and ignored by Git; protect the machine. **Disconnect** removes the local token; revoke the app separately from the Google Account security page if needed.
+
+The bridge and AI use the same reconciliation function. Direct Gmail sync and the MCP tool `reconcile_outreach_from_gmail` both deduplicate by Gmail message/thread IDs and can correct stale recipient, subject, role, and status metadata without storing message bodies.
+
+#### AI skill
+
+The repository includes `skills/open-email-harvester-outreach/SKILL.md`. Install or link that skill into the AI client’s skill directory when you want the AI to know the sync/reconciliation workflow. MCP tool descriptions remain the source of truth for available operations; the skill tells the AI to check connection status, sync before answering current outreach questions, preserve Gmail IDs, and avoid storing bodies or credentials.
 
 ### REST quick reference
 ```

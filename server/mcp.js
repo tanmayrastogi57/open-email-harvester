@@ -4,6 +4,7 @@
 const db = require('./db.js');
 const S = require('../extension/src/store.js');
 const outreach = require('./outreach.js');
+const gmail = require('./gmail.js');
 
 const str = { type: 'string' };
 const filterProps = { query: str, tag: str, type: { type: 'string', enum: ['email', 'phone', 'social'] }, domain: str };
@@ -23,6 +24,9 @@ const TOOLS = [
   { name: 'set_outreach_followup', description: 'Set or clear the next follow-up date for a recipient.', inputSchema: { type: 'object', properties: { email: str, nextFollowUpAt: str, note: str }, required: ['email'] } },
   { name: 'outreach_summary', description: 'Return counts of outreach records by status and the number of due follow-ups.', inputSchema: { type: 'object', properties: {} } },
   { name: 'export_outreach', description: 'Export outreach records as JSON text.', inputSchema: { type: 'object', properties: { query: str, status: str, tag: str, due: { type: 'boolean' } } } },
+  { name: 'gmail_connection_status', description: 'Show whether this local bridge has a Gmail OAuth connection and its last sync status.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'sync_gmail_outreach', description: 'Synchronize Gmail message metadata into the local outreach tracker. Requires a Gmail account connected through the local bridge.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'reconcile_outreach_from_gmail', description: 'Apply normalized Gmail metadata from an AI Gmail connector to the same idempotent reconciliation logic used by direct Gmail sync. Do not include message bodies or credentials.', inputSchema: { type: 'object', properties: { messages: { type: 'array', items: { type: 'object' } } }, required: ['messages'] } },
 ];
 
 function call(name, a) {
@@ -42,6 +46,9 @@ function call(name, a) {
     case 'set_outreach_followup': return outreach.setFollowUp(a.email, a.nextFollowUpAt, a.note) || { error: 'not found' };
     case 'outreach_summary': return outreach.summary();
     case 'export_outreach': return outreach.exportJson(a);
+    case 'gmail_connection_status': return gmail.status();
+    case 'sync_gmail_outreach': return gmail.syncOutreach();
+    case 'reconcile_outreach_from_gmail': return outreach.reconcileGmail(a.messages);
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -53,10 +60,12 @@ function handle(msg) {
   if (method === 'tools/list') return ok({ tools: TOOLS });
   if (method === 'ping') return ok({});
   if (method === 'tools/call') {
+    const result = (r) => ok({ content: [{ type: 'text', text: typeof r === 'string' ? r : JSON.stringify(r, null, 2) }] });
+    const failure = (e) => ok({ isError: true, content: [{ type: 'text', text: String(e.message || e) }] });
     try {
       const r = call(params.name, params.arguments || {});
-      return ok({ content: [{ type: 'text', text: typeof r === 'string' ? r : JSON.stringify(r, null, 2) }] });
-    } catch (e) { return ok({ isError: true, content: [{ type: 'text', text: String(e.message || e) }] }); }
+      return r && typeof r.then === 'function' ? r.then(result, failure) : result(r);
+    } catch (e) { return failure(e); }
   }
   if (id === undefined) return null; // notification
   return { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } };
@@ -72,8 +81,10 @@ if (require.main === module) {
       const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
       if (!line) continue;
       let out;
-      try { out = handle(JSON.parse(line)); } catch { out = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }; }
-      if (out) process.stdout.write(JSON.stringify(out) + '\n');
+      try {
+        out = handle(JSON.parse(line));
+        Promise.resolve(out).then((result) => { if (result) process.stdout.write(JSON.stringify(result) + '\n'); });
+      } catch { out = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }; process.stdout.write(JSON.stringify(out) + '\n'); }
     }
   });
 }

@@ -7,4 +7,7 @@ web-ext-artifacts/
 .env
 .env.*
 contacts.json
+outreach.json
+gmail-tokens.json
+*.tokens.json
 .DS_Store

@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "description": "Privacy-first, local-only contact extractor for any website. Emails (obfuscation-aware), phones, social links. Connect any AI via MCP/OpenAPI.",
   "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:8765/*", "http://localhost:8765/*"],
   "optional_host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

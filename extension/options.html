@@ -1,6 +1,6 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>Open Email Harvester – Settings</title>
-<style>body{font:14px system-ui,sans-serif;max-width:640px;margin:30px auto;color:#1d2330}label{display:block;margin:14px 0}input[type=text],input[type=password]{width:100%;padding:6px}small{color:#667}</style></head>
+<style>body{font:14px system-ui,sans-serif;max-width:640px;margin:30px auto;color:#1d2330}label{display:block;margin:14px 0}input[type=text],input[type=password]{width:100%;padding:6px}small{color:#667}button{margin:4px 4px 4px 0;padding:7px 10px}#gmailStatus{margin:10px 0;padding:8px;background:#f3f4f6;border-radius:6px}</style></head>
 <body>
 <h2>Open Email Harvester – Settings</h2>
 <p><small>All data stays in this browser's local storage. Nothing leaves your machine unless you enable bridge sync below (localhost only).</small></p>
@@ -8,6 +8,10 @@
 <label><input type="checkbox" id="syncEnabled"> Sync new contacts to local AI bridge</label>
 <label>Bridge URL (localhost only)<input type="text" id="bridgeUrl"></label>
 <label>Bridge token (optional, must match OEH_TOKEN)<input type="password" id="bridgeToken"></label>
-<button id="save">Save</button> <span id="msg"></span>
+<hr><h3>Gmail outreach sync</h3>
+<p><small>Connect Gmail through the local bridge. The bridge reads Gmail metadata only and stores tokens locally. Each user connects their own account.</small></p>
+<div id="gmailStatus">Checking Gmail connection…</div>
+<button id="connectGmail" type="button">Connect Gmail</button><button id="syncGmail" type="button">Sync now</button><button id="disconnectGmail" type="button">Disconnect</button>
+<hr><button id="save" type="button">Save</button> <span id="msg"></span>
 <script src="src/browser-shim.js"></script><script src="options.js"></script>
 </body></html>

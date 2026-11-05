@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const db = require('./db.js');
 const outreach = require('./outreach.js');
+const gmail = require('./gmail.js');
 
 const PORT = Number(process.env.OEH_PORT || 8765);
 const HOST = process.env.OEH_HOST || '127.0.0.1';
@@ -19,6 +20,14 @@ function send(res, code, body, type) {
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
+}
+function redirect(res, location) {
+  res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' });
+  res.end();
+}
+function page(res, code, title, message) {
+  const safe = String(message || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return send(res, code, `<!doctype html><meta charset="utf-8"><title>${title}</title><p>${safe}</p><p><a href="/outreach/dashboard">Return to dashboard</a></p>`, 'text/html');
 }
 
 function readBody(req) {
@@ -34,11 +43,20 @@ async function handle(req, res) {
   const q = Object.fromEntries(u.searchParams);
   if (u.pathname === '/health') return send(res, 200, { ok: true });
   if (u.pathname === '/openapi.yaml') return send(res, 200, fs.readFileSync(path.join(__dirname, 'openapi.yaml'), 'utf8'), 'text/yaml');
+  if (u.pathname === '/auth/gmail/start' && req.method === 'GET') {
+    try { return redirect(res, gmail.authUrl()); } catch (e) { return page(res, 503, 'Gmail setup required', e.message); }
+  }
+  if (u.pathname === '/auth/gmail/callback' && req.method === 'GET') {
+    try { await gmail.exchangeCode(q.code, q.state); return redirect(res, '/outreach/dashboard?gmail=connected'); } catch (e) { return page(res, 400, 'Gmail connection failed', e.message); }
+  }
   if (TOKEN && req.headers.authorization !== 'Bearer ' + TOKEN) return send(res, 401, { error: 'unauthorized' });
   const m = u.pathname.match(/^\/contacts\/([^/]+)$/);
   const om = u.pathname.match(/^\/outreach\/([^/]+)$/);
   try {
     if (u.pathname === '/outreach/dashboard' && req.method === 'GET') return send(res, 200, fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf8'), 'text/html');
+    if (u.pathname === '/auth/gmail/status' && req.method === 'GET') return send(res, 200, gmail.status());
+    if (u.pathname === '/auth/gmail/disconnect' && req.method === 'POST') return send(res, 200, await gmail.disconnect());
+    if (u.pathname === '/outreach/sync' && req.method === 'POST') return send(res, 200, await gmail.syncOutreach());
     if (u.pathname === '/outreach' && req.method === 'GET') return send(res, 200, outreach.list(q));
     if (u.pathname === '/outreach/summary' && req.method === 'GET') return send(res, 200, outreach.summary());
     if (u.pathname === '/outreach' && req.method === 'POST') return send(res, 200, outreach.upsert(await readBody(req)));
@@ -64,7 +82,7 @@ async function handle(req, res) {
 
 function start(port, host) {
   const srv = http.createServer(handle);
-  return new Promise((ok) => srv.listen(port, host, () => ok(srv)));
+  return new Promise((ok) => srv.listen(port, host, () => { gmail.startBackgroundSync(); ok(srv); }));
 }
 module.exports = { start };
 if (require.main === module) start(PORT, HOST).then(() => console.log(`Open Email Harvester bridge on http://${HOST}:${PORT} (data: ${db.FILE})`));

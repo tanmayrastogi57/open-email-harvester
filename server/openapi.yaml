@@ -119,3 +119,13 @@ paths:
       responses: { '200': { description: Updated outreach record } }
   /outreach/export:
     get: { operationId: exportOutreach, summary: Export outreach records as JSON, responses: { '200': { description: JSON export } } }
+  /outreach/sync:
+    post: { operationId: syncGmailOutreach, summary: Sync Gmail metadata directly into outreach records, responses: { '200': { description: Sync result } } }
+  /auth/gmail/status:
+    get: { operationId: gmailConnectionStatus, summary: Show local Gmail connection status, responses: { '200': { description: Gmail status } } }
+  /auth/gmail/start:
+    get: { operationId: startGmailAuth, summary: Start local Google OAuth flow, responses: { '302': { description: Redirect to Google consent screen } } }
+  /auth/gmail/callback:
+    get: { operationId: gmailAuthCallback, summary: Complete local Google OAuth flow, parameters: [{ name: code, in: query, required: true, schema: { type: string } }, { name: state, in: query, required: true, schema: { type: string } }], responses: { '302': { description: Return to dashboard } } }
+  /auth/gmail/disconnect:
+    post: { operationId: disconnectGmail, summary: Remove the local Gmail token, responses: { '200': { description: Disconnected } } }

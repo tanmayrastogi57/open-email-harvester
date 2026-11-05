@@ -6,6 +6,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 process.env.OEH_DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'oeh-')), 'c.json');
 process.env.OEH_OUTREACH_DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'oeh-outreach-')), 'outreach.json');
+process.env.OEH_GMAIL_TOKEN_DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'oeh-gmail-')), 'gmail-tokens.json');
 const { handle } = require('../server/mcp.js');
 const { start } = require('../server/bridge.js');
 
@@ -13,7 +14,7 @@ const call = (name, args) => JSON.parse(handle({ jsonrpc: '2.0', id: 1, method: 
 
 test('MCP initialize + tools/list', () => {
   assert.equal(handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }).result.serverInfo.name, 'open-email-harvester');
-  assert.ok(handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }).result.tools.length >= 14);
+  assert.ok(handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }).result.tools.length >= 17);
   assert.equal(handle({ jsonrpc: '2.0', method: 'notifications/initialized' }), null);
 });
 test('MCP outreach tracking', () => {
@@ -22,6 +23,15 @@ test('MCP outreach tracking', () => {
   call('record_outreach_event', { email: 'hire@example.com', type: 'reply', note: 'Asked for availability' });
   assert.equal(call('list_outreach', { status: 'replied' })[0].company, 'Example');
   assert.equal(call('outreach_summary').counts.replied, 1);
+});
+test('Gmail metadata reconciliation is idempotent and thread-aware', () => {
+  const messages = [
+    { messageId: 'm1', threadId: 't1', direction: 'sent', email: 'recruiter@example.com', subject: 'Application: Python Developer', at: '2026-11-05T10:00:00Z' },
+    { messageId: 'm2', threadId: 't1', direction: 'inbound', email: 'recruiter@example.com', subject: 'Re: Application: Python Developer', at: '2026-11-05T11:00:00Z' },
+  ];
+  assert.equal(call('reconcile_outreach_from_gmail', { messages }).replies, 1);
+  assert.equal(call('reconcile_outreach_from_gmail', { messages }).total, 2);
+  assert.equal(call('list_outreach', { query: 'recruiter@example.com' })[0].status, 'replied');
 });
 test('MCP add/tag/search/extract', () => {
   assert.equal(call('add_contacts', { contacts: [{ email: 'Jane@Example.com' }] }).added, 1);
@@ -36,6 +46,9 @@ test('HTTP bridge', async () => {
   const base = 'http://127.0.0.1:' + srv.address().port;
   try {
     assert.equal((await (await fetch(base + '/health')).json()).ok, true);
+    assert.equal((await (await fetch(base + '/auth/gmail/status')).json()).connected, false);
+    assert.equal((await (await fetch(base + '/outreach/sync', { method: 'POST' })).json()).skipped, true);
+    assert.equal((await (await fetch(base + '/outreach/dashboard')).text()).includes('Connect Gmail'), true);
     await fetch(base + '/contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([{ email: 'c@example.net' }]) });
     const list = await (await fetch(base + '/contacts?query=example.net')).json();
     assert.equal(list.length, 1);
