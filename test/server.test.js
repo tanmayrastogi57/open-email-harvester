@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const fs = require('node:fs');
 process.env.OEH_DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'oeh-')), 'c.json');
+process.env.OEH_OUTREACH_DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'oeh-outreach-')), 'outreach.json');
 const { handle } = require('../server/mcp.js');
 const { start } = require('../server/bridge.js');
 
@@ -12,8 +13,15 @@ const call = (name, args) => JSON.parse(handle({ jsonrpc: '2.0', id: 1, method: 
 
 test('MCP initialize + tools/list', () => {
   assert.equal(handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }).result.serverInfo.name, 'open-email-harvester');
-  assert.ok(handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }).result.tools.length >= 8);
+  assert.ok(handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }).result.tools.length >= 14);
   assert.equal(handle({ jsonrpc: '2.0', method: 'notifications/initialized' }), null);
+});
+test('MCP outreach tracking', () => {
+  assert.equal(call('upsert_outreach', { records: [{ email: 'hire@example.com', company: 'Example', role: 'AI Engineer', sourceUrl: 'https://example.com/job' }] }).added, 1);
+  call('record_outreach_event', { email: 'hire@example.com', type: 'sent', subject: 'Application' });
+  call('record_outreach_event', { email: 'hire@example.com', type: 'reply', note: 'Asked for availability' });
+  assert.equal(call('list_outreach', { status: 'replied' })[0].company, 'Example');
+  assert.equal(call('outreach_summary').counts.replied, 1);
 });
 test('MCP add/tag/search/extract', () => {
   assert.equal(call('add_contacts', { contacts: [{ email: 'Jane@Example.com' }] }).added, 1);

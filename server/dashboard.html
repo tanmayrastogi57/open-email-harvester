@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Outreach CRM</title>
+  <style>
+    :root{color-scheme:dark;font:14px system-ui,sans-serif;background:#111827;color:#e5e7eb}body{margin:0;padding:24px;max-width:1400px;margin-inline:auto}h1{margin:0 0 6px}p{color:#9ca3af}.cards{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}.card{background:#1f2937;border:1px solid #374151;border-radius:12px;padding:14px 18px;min-width:115px}.card b{display:block;font-size:24px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}input,select,button{background:#111827;color:#e5e7eb;border:1px solid #4b5563;border-radius:7px;padding:9px}button{cursor:pointer;background:#2563eb;border-color:#2563eb}button.secondary{background:#374151;border-color:#4b5563}table{width:100%;border-collapse:collapse;background:#1f2937;border-radius:10px;overflow:hidden}th,td{text-align:left;padding:10px;border-bottom:1px solid #374151;vertical-align:top}th{color:#9ca3af;font-size:12px;text-transform:uppercase}td small{display:block;color:#9ca3af;margin-top:4px}.pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#374151}.due{color:#fbbf24}.empty{padding:30px;text-align:center;color:#9ca3af}@media(max-width:800px){body{padding:14px}table{font-size:12px}th:nth-child(4),td:nth-child(4){display:none}}
+  </style>
+</head>
+<body>
+  <h1>Outreach CRM</h1><p>Local tracker for sent emails, replies, follow-ups, and job metadata.</p>
+  <section class="cards" id="cards"></section>
+  <div class="toolbar"><input id="q" placeholder="Search email, company, role…"><select id="status"><option value="">All statuses</option><option>new</option><option>sent</option><option>followed_up</option><option>replied</option><option>interview</option><option>rejected</option><option>bounced</option><option>closed</option></select><button id="refresh">Refresh</button><button class="secondary" id="due">Due follow-ups</button></div>
+  <table><thead><tr><th>Contact</th><th>Role / company</th><th>Status</th><th>Last activity</th><th>Next follow-up</th></tr></thead><tbody id="rows"></tbody></table>
+  <script>
+    const $=id=>document.getElementById(id); let dueOnly=false;
+    async function load(){const p=new URLSearchParams();if($('q').value)p.set('query',$('q').value);if($('status').value)p.set('status',$('status').value);if(dueOnly)p.set('due','true');const [s,r]=await Promise.all([fetch('/outreach/summary').then(x=>x.json()),fetch('/outreach?'+p).then(x=>x.json())]);$('cards').innerHTML=Object.entries({...s.counts,total:s.total,due:s.due}).map(([k,v])=>`<div class="card"><b>${v}</b>${k}</div>`).join('');$('rows').innerHTML=r.length?r.map(x=>`<tr><td><b>${x.name||'—'}</b><small>${x.email}</small></td><td>${x.role||'—'}<small>${x.company||''}</small></td><td><span class="pill">${x.status}</span></td><td>${last(x)}</td><td class="${x.nextFollowUpAt&&x.nextFollowUpAt.slice(0,10)<=new Date().toISOString().slice(0,10)?'due':''}">${x.nextFollowUpAt||'—'}</td></tr>`).join(''):'<tr><td class="empty" colspan="5">No outreach records yet.</td></tr>'}
+    function last(x){const e=(x.events||[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at)))[0];return e?`${e.type}<small>${e.at}</small>`:'—'}$('refresh').onclick=load;$('due').onclick=()=>{dueOnly=!dueOnly;$('due').textContent=dueOnly?'All contacts':'Due follow-ups';load()};$('q').oninput=load;$('status').onchange=load;load();
+  </script>
+</body></html>

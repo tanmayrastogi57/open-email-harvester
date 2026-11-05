@@ -100,6 +100,16 @@ Use stdio transport with the command `node /ABS/PATH/server/mcp.js`.
 ### Syncing the extension to the bridge
 Open extension **Settings**, turn on **Sync**, keep the URL as `http://127.0.0.1:8765` and enter the token if you set one. New scans are then sent to the bridge, so your AI sees them. The **Sync** button in the popup pushes everything you've already saved.
 
+### Outreach CRM
+
+The local bridge also includes a privacy-first outreach tracker. It stores data at `~/.open-email-harvester/outreach.json` unless `OEH_OUTREACH_DATA` is set.
+
+Start the bridge and open `http://127.0.0.1:8765/outreach/dashboard` to view sent contacts, replies, follow-up status, and job metadata. The MCP server exposes `list_outreach`, `upsert_outreach`, `record_outreach_event`, `set_outreach_followup`, `outreach_summary`, and `export_outreach`.
+
+The tracker does not send mail, scrape private addresses, or connect directly to Gmail. Gmail synchronization is AI-triggered: an AI client with its own Gmail connector searches sent mail, replies, and delivery failures, then writes metadata to this local MCP server using Gmail `messageId` and `threadId`. Sending a message manually in Gmail is reflected after the next sync; there is no background watcher by default.
+
+The local tracker stores outreach metadata and event history, not Gmail credentials or full message bodies. The dashboard binds to `127.0.0.1` and is visible only on the machine running the bridge unless you deliberately deploy and secure it. Each person who installs the project must connect their own AI client and Gmail account; the repository contains no user outreach data.
+
 ### REST quick reference
 ```
 GET    /health

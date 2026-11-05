@@ -3,6 +3,7 @@
 /* Dependency-free MCP server over stdio (JSON-RPC 2.0, newline-delimited). */
 const db = require('./db.js');
 const S = require('../extension/src/store.js');
+const outreach = require('./outreach.js');
 
 const str = { type: 'string' };
 const filterProps = { query: str, tag: str, type: { type: 'string', enum: ['email', 'phone', 'social'] }, domain: str };
@@ -16,6 +17,12 @@ const TOOLS = [
   { name: 'validate_email', description: 'Offline syntax + disposable + role-account check.', inputSchema: { type: 'object', properties: { email: str }, required: ['email'] } },
   { name: 'list_domains', description: 'Contact counts grouped by domain.', inputSchema: { type: 'object', properties: {} } },
   { name: 'export_contacts', description: 'Export contacts as CSV or JSON text.', inputSchema: { type: 'object', properties: Object.assign({ format: { type: 'string', enum: ['csv', 'json'] } }, filterProps) } },
+  { name: 'list_outreach', description: 'List outreach records with status, job metadata, event history, and follow-up dates.', inputSchema: { type: 'object', properties: { query: str, status: str, tag: str, due: { type: 'boolean' } } } },
+  { name: 'upsert_outreach', description: 'Create or update outreach records. Include email, name, company, role, sourceUrl, metadata, tags, and/or events.', inputSchema: { type: 'object', properties: { records: { type: 'array', items: { type: 'object' } } }, required: ['records'] } },
+  { name: 'record_outreach_event', description: 'Record a sent, reply, followup, interview, rejection, bounce, or note event for a recipient.', inputSchema: { type: 'object', properties: { email: str, type: str, at: str, subject: str, messageId: str, threadId: str, note: str }, required: ['email', 'type'] } },
+  { name: 'set_outreach_followup', description: 'Set or clear the next follow-up date for a recipient.', inputSchema: { type: 'object', properties: { email: str, nextFollowUpAt: str, note: str }, required: ['email'] } },
+  { name: 'outreach_summary', description: 'Return counts of outreach records by status and the number of due follow-ups.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'export_outreach', description: 'Export outreach records as JSON text.', inputSchema: { type: 'object', properties: { query: str, status: str, tag: str, due: { type: 'boolean' } } } },
 ];
 
 function call(name, a) {
@@ -29,6 +36,12 @@ function call(name, a) {
     case 'validate_email': return db.validate(a.email);
     case 'list_domains': return db.groups();
     case 'export_contacts': return db.exportAs(a.format || 'json', a);
+    case 'list_outreach': return outreach.list(a);
+    case 'upsert_outreach': return outreach.upsert(a.records);
+    case 'record_outreach_event': return outreach.recordEvent(a.email, a);
+    case 'set_outreach_followup': return outreach.setFollowUp(a.email, a.nextFollowUpAt, a.note) || { error: 'not found' };
+    case 'outreach_summary': return outreach.summary();
+    case 'export_outreach': return outreach.exportJson(a);
     default: throw new Error('Unknown tool: ' + name);
   }
 }

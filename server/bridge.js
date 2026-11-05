@@ -5,6 +5,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const db = require('./db.js');
+const outreach = require('./outreach.js');
 
 const PORT = Number(process.env.OEH_PORT || 8765);
 const HOST = process.env.OEH_HOST || '127.0.0.1';
@@ -35,7 +36,15 @@ async function handle(req, res) {
   if (u.pathname === '/openapi.yaml') return send(res, 200, fs.readFileSync(path.join(__dirname, 'openapi.yaml'), 'utf8'), 'text/yaml');
   if (TOKEN && req.headers.authorization !== 'Bearer ' + TOKEN) return send(res, 401, { error: 'unauthorized' });
   const m = u.pathname.match(/^\/contacts\/([^/]+)$/);
+  const om = u.pathname.match(/^\/outreach\/([^/]+)$/);
   try {
+    if (u.pathname === '/outreach/dashboard' && req.method === 'GET') return send(res, 200, fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf8'), 'text/html');
+    if (u.pathname === '/outreach' && req.method === 'GET') return send(res, 200, outreach.list(q));
+    if (u.pathname === '/outreach/summary' && req.method === 'GET') return send(res, 200, outreach.summary());
+    if (u.pathname === '/outreach' && req.method === 'POST') return send(res, 200, outreach.upsert(await readBody(req)));
+    if (u.pathname === '/outreach/event' && req.method === 'POST') { const b = await readBody(req); return send(res, 200, outreach.recordEvent(b.email, b)); }
+    if (om && req.method === 'PATCH') { const b = await readBody(req); const c = outreach.setFollowUp(decodeURIComponent(om[1]), b.nextFollowUpAt, b.note); return c ? send(res, 200, c) : send(res, 404, { error: 'not found' }); }
+    if (u.pathname === '/outreach/export' && req.method === 'GET') return send(res, 200, outreach.exportJson(q), 'application/json');
     if (u.pathname === '/contacts' && req.method === 'GET') return send(res, 200, db.list(q));
     if (u.pathname === '/contacts' && req.method === 'POST') return send(res, 200, db.add(await readBody(req)));
     if (u.pathname === '/contacts' && req.method === 'DELETE') { db.clear(); return send(res, 200, { cleared: true }); }

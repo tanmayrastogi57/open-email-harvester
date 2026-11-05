@@ -31,6 +31,21 @@ components:
         notes: { type: string }
         sources: { type: array, items: { type: string } }
         createdAt: { type: string, format: date-time }
+    OutreachRecord:
+      type: object
+      required: [email]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        company: { type: string }
+        role: { type: string }
+        sourceUrl: { type: string }
+        status: { type: string, enum: [new, sent, followed_up, replied, interview, rejected, bounced, closed] }
+        nextFollowUpAt: { type: string, format: date-time }
+        tags: { type: array, items: { type: string } }
+        notes: { type: string }
+        events: { type: array, items: { type: object } }
 security:
   - bearer: []
   - {}
@@ -83,3 +98,24 @@ paths:
       summary: Offline syntax/disposable/role check
       parameters: [{ name: email, in: query, required: true, schema: { type: string } }]
       responses: { '200': { description: Validity result } }
+  /outreach:
+    get:
+      operationId: listOutreach
+      summary: List outreach records
+      parameters: [{ $ref: '#/components/parameters/query' }, { name: status, in: query, schema: { type: string } }, { $ref: '#/components/parameters/tag' }, { name: due, in: query, schema: { type: boolean } }]
+      responses: { '200': { description: Outreach records, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OutreachRecord' } } } } } }
+    post:
+      operationId: upsertOutreach
+      summary: Create or update outreach records
+      requestBody: { required: true, content: { application/json: { schema: { oneOf: [{ $ref: '#/components/schemas/OutreachRecord' }, { type: array, items: { $ref: '#/components/schemas/OutreachRecord' } }] } } } }
+      responses: { '200': { description: Added and updated counts } }
+  /outreach/summary:
+    get: { operationId: outreachSummary, summary: Outreach status counts, responses: { '200': { description: Summary } } }
+  /outreach/event:
+    post:
+      operationId: recordOutreachEvent
+      summary: Record a sent, reply, follow-up, or other outreach event
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email, type], properties: { email: { type: string }, type: { type: string }, at: { type: string, format: date-time }, messageId: { type: string }, threadId: { type: string }, subject: { type: string }, note: { type: string } } } } } }
+      responses: { '200': { description: Updated outreach record } }
+  /outreach/export:
+    get: { operationId: exportOutreach, summary: Export outreach records as JSON, responses: { '200': { description: JSON export } } }

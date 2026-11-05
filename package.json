@@ -8,7 +8,7 @@
     "oeh-bridge": "server/bridge.js"
   },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "lint": "eslint .",
     "lint:ext": "web-ext lint --source-dir extension",
     "mcp": "node server/mcp.js",
