@@ -43,7 +43,7 @@ $('scan').onclick = async () => {
   $('status').textContent = 'Scanning…';
   const [tab] = await api.tabs.query({ active: true, currentWindow: true });
   const r = await api.runtime.sendMessage({ type: 'scan', tabId: tab.id });
-  $('status').textContent = r && r.error ? r.error : `+${r.added} new (${r.scan.emails} emails, ${r.scan.phones} phones, ${r.scan.socials} links)`;
+  $('status').textContent = r && r.error ? r.error : `+${r.added} new (${r.scan.emails} emails, ${r.scan.phones} phones, ${r.scan.socials} links)${r.sync && r.sync.synced ? ' · synced to dashboard' : ' · saved locally; enable bridge sync in Settings'}`;
   load();
 };
 $('q').oninput = render; $('type').onchange = render; $('group').onchange = render;

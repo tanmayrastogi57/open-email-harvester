@@ -122,7 +122,7 @@ Open extension **Settings**, turn on **Sync**, keep the URL as `http://127.0.0.1
 
 The local bridge also includes a privacy-first outreach tracker. It stores data at `~/.open-email-harvester/outreach.json` unless `OEH_OUTREACH_DATA` is set.
 
-Start the bridge and open `http://127.0.0.1:8765/outreach/dashboard` to view sent contacts, replies, follow-up status, and job metadata. The MCP server exposes `list_outreach`, `upsert_outreach`, `record_outreach_event`, `set_outreach_followup`, `outreach_summary`, and `export_outreach`.
+Start the bridge and open `http://127.0.0.1:8765/outreach/dashboard` to view harvested contacts, sent contacts, replies, follow-up status, and job metadata. The harvested-contact table is populated when extension **Sync** is enabled; otherwise scans remain in browser storage. The MCP server exposes `list_outreach`, `upsert_outreach`, `record_outreach_event`, `set_outreach_followup`, `outreach_summary`, and `export_outreach`.
 
 The tracker does not send mail or scrape private addresses. Gmail synchronization can be AI-triggered through an AI client's Gmail connector, or can run directly through the bridge after the user completes local Gmail OAuth. Both paths search sent mail and replies, then write metadata using Gmail `messageId` and `threadId`. Sending a message manually in Gmail is reflected after the next sync.
 

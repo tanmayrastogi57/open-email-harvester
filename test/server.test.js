@@ -48,7 +48,10 @@ test('HTTP bridge', async () => {
     assert.equal((await (await fetch(base + '/health')).json()).ok, true);
     assert.equal((await (await fetch(base + '/auth/gmail/status')).json()).connected, false);
     assert.equal((await (await fetch(base + '/outreach/sync', { method: 'POST' })).json()).skipped, true);
-    assert.equal((await (await fetch(base + '/outreach/dashboard')).text()).includes('Connect Gmail'), true);
+    const dashboard = await (await fetch(base + '/outreach/dashboard')).text();
+    assert.equal(dashboard.includes('Connect Gmail'), true);
+    assert.equal(dashboard.includes('Harvested contacts'), true);
+    assert.equal(dashboard.includes("fetch('/contacts?'+cp"), true);
     await fetch(base + '/contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([{ email: 'c@example.net' }]) });
     const list = await (await fetch(base + '/contacts?query=example.net')).json();
     assert.equal(list.length, 1);
