@@ -50,8 +50,11 @@ function applyEvent(record, event) {
   const when = e.at;
   if (e.type === 'sent' || e.type === 'followup') record.lastOutboundAt = [record.lastOutboundAt, when].filter(Boolean).sort().pop();
   if (e.type === 'reply') record.lastInboundAt = [record.lastInboundAt, when].filter(Boolean).sort().pop();
+  if (['interview', 'rejection'].includes(e.type)) record.lastInboundAt = [record.lastInboundAt, when].filter(Boolean).sort().pop();
   if (e.type === 'sent' && !record.firstContactAt) record.firstContactAt = when;
   if (e.type === 'reply') record.status = 'replied';
+  else if (e.type === 'interview') record.status = 'interview';
+  else if (e.type === 'rejection') record.status = 'rejected';
   else if (e.type === 'bounce' && record.status !== 'replied') record.status = 'bounced';
   else if (e.type === 'followup' && !['replied', 'bounced'].includes(record.status)) record.status = 'followed_up';
   else if (e.type === 'sent' && record.status === 'new') record.status = 'sent';
@@ -160,7 +163,8 @@ function reconcileGmail(messages) {
       mergeOne(listValue, { email, source: 'gmail', event: { type: 'bounce', at: message.at, messageId: message.messageId, threadId: message.threadId, subject: message.subject } });
       bounces++;
     } else if (before) {
-      mergeOne(listValue, { email: before.email, source: 'gmail', event: { type: 'reply', at: message.at, messageId: message.messageId, threadId: message.threadId, subject: message.subject } });
+      const eventType = ['interview', 'rejection'].includes(message.eventType) ? message.eventType : 'reply';
+      mergeOne(listValue, { email: before.email, source: 'gmail', interviewUrl: message.interviewUrl, event: { type: eventType, at: message.at, messageId: message.messageId, threadId: message.threadId, subject: message.subject, interviewUrl: message.interviewUrl } });
       replies++;
     }
     const after = findRecord(listValue, { email, threadId: message.threadId, messageId: message.messageId });

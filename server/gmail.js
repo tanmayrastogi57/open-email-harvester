@@ -73,12 +73,17 @@ function headers(message) { return Object.fromEntries((message.payload?.headers 
 function address(value) { const text = String(value || '').trim(); const match = text.match(/<([^>]+)>/); return (match ? match[1] : text).toLowerCase(); }
 function details(message) {
   const h = headers(message);
-  return { messageId: message.id, threadId: message.threadId, labelIds: message.labelIds || [], at: new Date(Number(message.internalDate || Date.now())).toISOString(), from: address(h.from), to: address(h.to), subject: h.subject || '', direction: (message.labelIds || []).includes('SENT') ? 'sent' : 'inbound' };
+  return { messageId: message.id, threadId: message.threadId, labelIds: message.labelIds || [], at: new Date(Number(message.internalDate || Date.now())).toISOString(), from: address(h.from), to: address(h.to), subject: h.subject || '', direction: (message.labelIds || []).includes('SENT') ? 'sent' : 'inbound', text: messageText(message.payload) };
+}
+function messageText(part) {
+  if (!part) return '';
+  const own = part.body?.data ? Buffer.from(part.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8') : '';
+  return [own, ...(part.parts || []).map(messageText)].join('\n').replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/&amp;/gi, '&').replace(/\s+/g, ' ').slice(0, 100000);
 }
 async function getMessages(ids) {
   const messages = [];
   for (let i = 0; i < ids.length; i += 10) {
-    const batch = await Promise.all(ids.slice(i, i + 10).map(async (item) => details(await gmail(`messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`))));
+    const batch = await Promise.all(ids.slice(i, i + 10).map(async (item) => details(await gmail(`messages/${encodeURIComponent(item.id)}?format=full`))));
     messages.push(...batch);
   }
   return messages;
@@ -89,7 +94,14 @@ async function syncOutreach() {
   const threadIds = new Set(sent.map((m) => m.threadId));
   const inboundCandidates = await getMessages(await listMessages('newer_than:90d -from:me -in:spam -in:trash'));
   const inbound = inboundCandidates.filter((m) => threadIds.has(m.threadId));
-  const stats = outreach.reconcileGmail([...sent, ...inbound]);
+  const classified = inbound.map((message) => {
+    const text = `${message.subject} ${message.text || ''}`;
+    const interview = /\b(interview|schedule (?:a|an) call|technical round|next round)\b/i.test(text);
+    const rejection = /\b(regret to inform|unfortunately|not moving forward|decided to proceed with other|not selected|position has been filled)\b/i.test(text);
+    const url = interview ? (text.match(/https?:\/\/[^\s<>"')]+/i) || [])[0] : undefined;
+    return Object.assign({}, message, { eventType: rejection ? 'rejection' : interview ? 'interview' : 'reply', interviewUrl: url });
+  });
+  const stats = outreach.reconcileGmail([...sent, ...classified]);
   const value = load(); value.lastSyncAt = new Date().toISOString(); value.lastSyncStats = stats; save(value);
   return Object.assign({ connected: true, lastSyncAt: value.lastSyncAt }, stats);
 }
