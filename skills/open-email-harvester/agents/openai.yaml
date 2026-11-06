@@ -1,0 +1,4 @@
+interface:
+  display_name: "Open Email Harvester"
+  short_description: "Use the local harvester and outreach CRM"
+  default_prompt: "Use $open-email-harvester to inspect or update my local contacts and outreach metadata safely."

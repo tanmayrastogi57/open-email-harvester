@@ -29,6 +29,7 @@ Scan a page to pull out emails (obfuscated ones too), phone numbers, social/prof
 extension/   MV3 extension (popup, options, background, content, src/ shared logic)
 server/      mcp.js (MCP stdio server), bridge.js (REST), host.js (lifecycle), openapi.yaml, db.js
 scripts/     Windows auto-start installer and packaging helpers
+skills/      AI skills for the full extension and the outreach CRM
 test/        node:test unit tests
 ```
 
@@ -151,7 +152,7 @@ The bridge and AI use the same reconciliation function. Direct Gmail sync and th
 
 #### AI skill
 
-The repository includes `skills/open-email-harvester-outreach/SKILL.md`. Install or link that skill into the AI client’s skill directory when you want the AI to know the sync/reconciliation workflow. MCP tool descriptions remain the source of truth for available operations; the skill tells the AI to check connection status, sync before answering current outreach questions, preserve Gmail IDs, and avoid storing bodies or credentials.
+The repository includes `skills/open-email-harvester/SKILL.md` for the full extension workflow and `skills/open-email-harvester-outreach/SKILL.md` for the narrower outreach CRM workflow. Install or link the relevant skill into the AI client’s skill directory. MCP tool descriptions remain the source of truth for available operations; the skills tell the AI to check connection status, sync before answering current outreach questions, preserve Gmail IDs, and avoid storing bodies or credentials.
 
 ### REST quick reference
 ```
