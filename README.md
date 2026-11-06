@@ -27,7 +27,8 @@ Scan a page to pull out emails (obfuscated ones too), phone numbers, social/prof
 ## Repository layout
 ```
 extension/   MV3 extension (popup, options, background, content, src/ shared logic)
-server/      mcp.js (MCP stdio server), bridge.js (REST), openapi.yaml, db.js
+server/      mcp.js (MCP stdio server), bridge.js (REST), host.js (lifecycle), openapi.yaml, db.js
+scripts/     Windows auto-start installer and packaging helpers
 test/        node:test unit tests
 ```
 
@@ -52,6 +53,22 @@ First, download `open-email-harvester-extension-v1.0.0.zip` from [Releases](http
 ### Using it
 1. Open any page and click the toolbar icon, then **Scan this page**.
 2. To scan pages as they load, open **Settings**, turn on **Auto-scan** and accept the optional permission.
+
+### Start the local services automatically (Windows)
+
+The extension cannot launch an arbitrary Node process by itself. Run this one-time setup from the cloned repository instead:
+
+```powershell
+npm run autostart:install
+```
+
+This registers a per-user Windows Scheduled Task that starts the localhost bridge at sign-in. When Chrome starts, the extension waits for the bridge and opens the dashboard. The **Open the local dashboard when Chrome starts** setting can turn that tab off without stopping the service. Remove the task with:
+
+```powershell
+npm run autostart:uninstall
+```
+
+The MCP entrypoint is independent of Chrome: when an AI client launches `server/mcp.js`, it checks the health endpoint and starts the same local bridge on demand if needed. Set `OEH_AUTO_START_BRIDGE=0` to disable that behavior. The bridge remains bound to localhost and inherits only the environment variables already configured for that user.
 
 ## Connect an AI
 
@@ -88,7 +105,7 @@ Add the same block to `~/.cursor/mcp.json`, or to `.cursor/mcp.json` in a projec
 Use stdio transport with the command `node /ABS/PATH/server/mcp.js`.
 
 ### ChatGPT, custom GPTs, Gemini, local LLMs and other non-MCP tools
-1. Start the bridge:
+1. Start the bridge if you are using REST directly and have not installed the Windows auto-start task:
    ```bash
    node server/bridge.js            # http://127.0.0.1:8765
    OEH_TOKEN=choose-a-secret node server/bridge.js   # optional bearer token

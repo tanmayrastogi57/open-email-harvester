@@ -3,11 +3,28 @@ if (typeof importScripts === 'function' && typeof OEHExtractor === 'undefined') 
   importScripts('src/browser-shim.js', 'src/extractor.js', 'src/validate.js', 'src/store.js');
 }
 const api = globalThis.browser || globalThis.chrome;
-const DEFAULTS = { autoScan: false, syncEnabled: false, bridgeUrl: 'http://127.0.0.1:8765', bridgeToken: '' };
+const DEFAULTS = { autoScan: false, syncEnabled: false, openDashboardOnStartup: true, bridgeUrl: 'http://127.0.0.1:8765', bridgeToken: '' };
 
 async function getSettings() { return Object.assign({}, DEFAULTS, (await api.storage.local.get('settings')).settings); }
 async function getContacts() { return (await api.storage.local.get('contacts')).contacts || []; }
 async function setContacts(list) { await api.storage.local.set({ contacts: list }); }
+
+async function waitForBridge(base, attempts = 12) {
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const r = await fetch(base.replace(/\/$/, '') + '/health', { signal: AbortSignal.timeout(800) });
+      if (r.ok) return true;
+    } catch { /* The bridge may still be starting. */ }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
+}
+
+async function openDashboardOnStartup() {
+  const s = await getSettings();
+  if (!s.openDashboardOnStartup || !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?/.test(s.bridgeUrl)) return;
+  if (await waitForBridge(s.bridgeUrl)) await api.tabs.create({ url: s.bridgeUrl.replace(/\/$/, '') + '/outreach/dashboard' });
+}
 
 async function syncToBridge(items) {
   const s = await getSettings();
@@ -39,6 +56,10 @@ api.runtime.onMessage.addListener((msg, _sender, reply) => {
   })().then(reply, (e) => reply({ error: String(e.message || e) }));
   return true;
 });
+
+// The Windows per-user startup task launches the bridge. This listener waits
+// briefly for it and opens the local dashboard when Chrome starts.
+api.runtime.onStartup.addListener(() => openDashboardOnStartup().catch(() => {}));
 
 api.commands && api.commands.onCommand.addListener(async (cmd) => {
   if (cmd !== 'scan-page') return;

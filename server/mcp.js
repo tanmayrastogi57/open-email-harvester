@@ -5,6 +5,7 @@ const db = require('./db.js');
 const S = require('../extension/src/store.js');
 const outreach = require('./outreach.js');
 const gmail = require('./gmail.js');
+const host = require('./host.js');
 
 const str = { type: 'string' };
 const filterProps = { query: str, tag: str, type: { type: 'string', enum: ['email', 'phone', 'social'] }, domain: str };
@@ -73,18 +74,20 @@ function handle(msg) {
 
 module.exports = { handle, TOOLS };
 if (require.main === module) {
-  let buf = '';
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk) => {
-    buf += chunk; let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-      if (!line) continue;
-      let out;
-      try {
-        out = handle(JSON.parse(line));
-        Promise.resolve(out).then((result) => { if (result) process.stdout.write(JSON.stringify(result) + '\n'); });
-      } catch { out = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }; process.stdout.write(JSON.stringify(out) + '\n'); }
-    }
+  host.ensureBridge().catch((e) => process.stderr.write(`[OEH] ${e.message}\n`)).finally(() => {
+    let buf = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => {
+      buf += chunk; let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        let out;
+        try {
+          out = handle(JSON.parse(line));
+          Promise.resolve(out).then((result) => { if (result) process.stdout.write(JSON.stringify(result) + '\n'); });
+        } catch { out = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }; process.stdout.write(JSON.stringify(out) + '\n'); }
+      }
+    });
   });
 }

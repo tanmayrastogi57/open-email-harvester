@@ -1,5 +1,5 @@
 const api = globalThis.browser || globalThis.chrome;
-const DEFAULTS = { autoScan: false, syncEnabled: false, bridgeUrl: 'http://127.0.0.1:8765', bridgeToken: '' };
+const DEFAULTS = { autoScan: false, syncEnabled: false, openDashboardOnStartup: true, bridgeUrl: 'http://127.0.0.1:8765', bridgeToken: '' };
 const ids = Object.keys(DEFAULTS);
 function bridgeHeaders(settings) { const headers = {}; if (settings.bridgeToken) headers.Authorization = 'Bearer ' + settings.bridgeToken; return headers; }
 async function currentSettings() { return Object.assign({}, DEFAULTS, (await api.storage.local.get('settings')).settings); }

@@ -13,6 +13,8 @@
     "lint:ext": "web-ext lint --source-dir extension",
     "mcp": "node server/mcp.js",
     "bridge": "node server/bridge.js",
+    "autostart:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-autostart.ps1",
+    "autostart:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-autostart.ps1 -Uninstall",
     "package": "bash scripts/package.sh"
   },
   "engines": {
